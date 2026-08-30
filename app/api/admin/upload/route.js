@@ -34,14 +34,14 @@ export async function POST(req) {
       fileData: fileData || null,
       fileName: fileName || null,
       fileType: fileType || null,
-      unlockTime: new Date(unlockDateTime).toISOString(),
+      unlockTime: unlockDateTime, // Already converted with exact local timezone offset
       createdAt: new Date().toISOString(),
     };
 
     await kv.set(paperId, newPaper);
     await kv.lpush('all_exam_ids', paperId);
 
-    return NextResponse.json({ success: true, message: 'Question paper file locked and scheduled.' });
+    return NextResponse.json({ success: true, message: 'Question paper locked and scheduled.' });
   } catch (error) {
     return NextResponse.json({ error: error.message || 'Failed to upload paper' }, { status: 500 });
   }
