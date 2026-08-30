@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb', // Supports files up to 10MB
-    },
-  },
-};
+export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
