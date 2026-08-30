@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Lock, Unlock, Clock, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Lock, Unlock, Clock, ShieldCheck, RefreshCw, Download, FileText } from 'lucide-react';
 
 function CountdownTimer({ targetTime, onUnlock }) {
   const [timeLeft, setTimeLeft] = useState('');
@@ -58,7 +58,7 @@ export default function StudentPortalPage() {
             <ShieldCheck className="w-6 h-6 text-rose-500" />
             <h1 className="text-2xl font-black text-white">Timed Exam Locker</h1>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Questions reveal automatically once release time is reached</p>
+          <p className="text-xs text-slate-400 mt-1">Questions and files unlock automatically at the scheduled time</p>
         </div>
         <div className="flex items-center space-x-3">
           <button
@@ -119,11 +119,28 @@ export default function StudentPortalPage() {
                   <CountdownTimer targetTime={paper.unlockTime} onUnlock={fetchPapers} />
                 </div>
               ) : (
-                <div className="mt-4">
-                  <p className="text-xs text-emerald-400 font-semibold mb-2">Question Paper Content:</p>
-                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-sm font-mono whitespace-pre-wrap leading-relaxed shadow-inner">
-                    {paper.questions}
-                  </div>
+                <div className="mt-4 space-y-3">
+                  {paper.fileData && (
+                    <a
+                      href={paper.fileData}
+                      download={paper.fileName || 'question_paper'}
+                      className="flex items-center justify-between p-3.5 bg-emerald-950/40 border border-emerald-700/50 hover:border-emerald-500 rounded-xl text-emerald-300 transition"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <FileText className="w-5 h-5 text-emerald-400" />
+                        <span className="text-xs font-bold">{paper.fileName || 'Download Question Paper'}</span>
+                      </div>
+                      <div className="flex items-center space-x-1 text-xs font-semibold bg-emerald-600 text-white px-3 py-1.5 rounded-lg">
+                        <Download className="w-3.5 h-3.5 mr-1" /> Download
+                      </div>
+                    </a>
+                  )}
+
+                  {paper.questions && (
+                    <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-sm font-mono whitespace-pre-wrap leading-relaxed shadow-inner">
+                      {paper.questions}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -132,5 +149,4 @@ export default function StudentPortalPage() {
       )}
     </main>
   );
-              }
-    
+}
