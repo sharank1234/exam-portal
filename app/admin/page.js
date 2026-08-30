@@ -1,25 +1,48 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Lock, Unlock, ArrowLeft, CheckCircle2, AlertCircle, KeyRound, LogOut, UploadCloud, FileText } from 'lucide-react';
+import { Lock, Unlock, ArrowLeft, CheckCircle2, AlertCircle, KeyRound, LogOut, UploadCloud, Trash2, RefreshCw } from 'lucide-react';
 
 export default function AdminUploadPage() {
   const [auth, setAuth] = useState({ hostId: '', hostPassword: '' });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
 
+  // Upload state
   const [form, setForm] = useState({
     title: '',
     subject: '',
     unlockDateTime: '',
     questions: '',
   });
-
   const [fileInfo, setFileInfo] = useState({ fileData: null, fileName: '', fileType: '' });
   const [uploadLoading, setUploadLoading] = useState(false);
   const [status, setStatus] = useState({ type: '', message: '' });
 
-  // Handle file selection and convert to Base64
+  // Manage papers list
+  const [existingPapers, setExistingPapers] = useState([]);
+  const [fetchingPapers, setFetchingPapers] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const fetchExistingPapers = async () => {
+    setFetchingPapers(true);
+    try {
+      const res = await fetch('/api/papers');
+      const data = await res.json();
+      setExistingPapers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFetchingPapers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchExistingPapers();
+    }
+  }, [isAuthenticated]);
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -64,14 +87,12 @@ export default function AdminUploadPage() {
     }
   };
 
-  
-        const handleUpload = async (e) => {
+  const handleUpload = async (e) => {
     e.preventDefault();
     setUploadLoading(true);
     setStatus({ type: '', message: '' });
 
     try {
-      // Converts local device time directly into standard ISO with correct timezone offset
       const localUnlockTime = new Date(form.unlockDateTime).toISOString();
 
       const res = await fetch('/api/admin/upload', {
@@ -92,6 +113,7 @@ export default function AdminUploadPage() {
       setStatus({ type: 'success', message: 'Question paper locked and scheduled successfully!' });
       setForm({ title: '', subject: '', unlockDateTime: '', questions: '' });
       setFileInfo({ fileData: null, fileName: '', fileType: '' });
+      fetchExistingPapers();
     } catch (err) {
       setStatus({ type: 'error', message: err.message });
     } finally {
@@ -99,10 +121,36 @@ export default function AdminUploadPage() {
     }
   };
 
+  const handleDeletePaper = async (paperId) => {
+    if (!confirm('Are you sure you want to delete this question paper?')) return;
+    setDeletingId(paperId);
+
+    try {
+      const res = await fetch('/api/admin/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paperId,
+          hostId: auth.hostId,
+          hostPassword: auth.hostPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete');
+
+      setStatus({ type: 'success', message: 'Paper deleted successfully.' });
+      fetchExistingPapers();
+    } catch (err) {
+      setStatus({ type: 'error', message: err.message });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
-    <div className="max-w-xl mx-auto p-4 sm:p-6 my-6 sm:my-10">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-xl mx-auto p-4 sm:p-6 my-6 sm:my-10 space-y-8">
+      <div className="flex items-center justify-between">
         <Link href="/" className="inline-flex items-center text-xs text-slate-400 hover:text-slate-200 transition">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Student Portal
         </Link>
@@ -116,6 +164,7 @@ export default function AdminUploadPage() {
         )}
       </div>
 
+      {/* Login & Upload Card */}
       <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-xl backdrop-blur-md">
         <div className="flex items-center space-x-3 mb-6">
           <div className="p-2.5 bg-rose-500/20 text-rose-400 rounded-xl">
@@ -126,7 +175,7 @@ export default function AdminUploadPage() {
               {isAuthenticated ? 'Upload Exam File / Paper' : 'Host Verification'}
             </h1>
             <p className="text-xs text-slate-400">
-              {isAuthenticated ? 'Upload a PDF, document, image, or raw text' : 'Enter credentials to access upload dashboard'}
+              {isAuthenticated ? 'Upload a PDF, document, image, or raw text' : 'Enter credentials to access host dashboard'}
             </p>
           </div>
         </div>
@@ -211,7 +260,6 @@ export default function AdminUploadPage() {
               />
             </div>
 
-            {/* File Upload Section */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">Upload Question Paper File (PDF, Image, Docx)</label>
               <div className="border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-xl p-4 text-center cursor-pointer bg-slate-900/50 relative">
@@ -233,7 +281,6 @@ export default function AdminUploadPage() {
               </div>
             </div>
 
-            {/* Optional Plain Text Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">Or Paste Text / Instructions (Optional)</label>
               <textarea
@@ -255,6 +302,59 @@ export default function AdminUploadPage() {
           </form>
         )}
       </div>
+
+      {/* Host Management List: Delete Section */}
+      {isAuthenticated && (
+        <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-xl backdrop-blur-md">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-bold text-white">Active Papers List</h2>
+              <p className="text-xs text-slate-400">Remove accidental or incorrect scheduled exams</p>
+            </div>
+            <button
+              onClick={fetchExistingPapers}
+              className="p-2 bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition"
+              title="Refresh papers list"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${fetchingPapers ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {fetchingPapers ? (
+            <p className="text-xs text-slate-500 text-center py-4">Loading active papers...</p>
+          ) : existingPapers.length === 0 ? (
+            <p className="text-xs text-slate-500 text-center py-4">No uploaded papers currently active.</p>
+          ) : (
+            <div className="space-y-3">
+              {existingPapers.map((paper) => (
+                <div
+                  key={paper.id}
+                  className="flex items-center justify-between p-3.5 bg-slate-900/90 border border-slate-700/60 rounded-xl"
+                >
+                  <div className="truncate pr-3">
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                      {paper.subject}
+                    </span>
+                    <h3 className="text-sm font-semibold text-white mt-1 truncate">{paper.title}</h3>
+                    <p className="text-[11px] text-slate-400">
+                      {paper.isUnlocked ? 'Unlocked' : `Unlocks: ${new Date(paper.unlockTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeletePaper(paper.id)}
+                    disabled={deletingId === paper.id}
+                    className="p-2.5 bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 border border-rose-500/30 rounded-xl transition disabled:opacity-50 flex items-center space-x-1 shrink-0"
+                    title="Delete Paper"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="text-xs font-medium hidden sm:inline">Delete</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
