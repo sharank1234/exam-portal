@@ -64,18 +64,23 @@ export default function AdminUploadPage() {
     }
   };
 
-  const handleUpload = async (e) => {
+  
+        const handleUpload = async (e) => {
     e.preventDefault();
     setUploadLoading(true);
     setStatus({ type: '', message: '' });
 
     try {
+      // Converts local device time directly into standard ISO with correct timezone offset
+      const localUnlockTime = new Date(form.unlockDateTime).toISOString();
+
       const res = await fetch('/api/admin/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           ...fileInfo,
+          unlockDateTime: localUnlockTime,
           hostId: auth.hostId,
           hostPassword: auth.hostPassword,
         }),
@@ -93,6 +98,7 @@ export default function AdminUploadPage() {
       setUploadLoading(false);
     }
   };
+
 
   return (
     <div className="max-w-xl mx-auto p-4 sm:p-6 my-6 sm:my-10">
