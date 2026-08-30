@@ -23,7 +23,11 @@ export async function GET() {
           subject: paper.subject,
           unlockTime: paper.unlockTime,
           isUnlocked,
+          // Content only exposed if timer is reached
           questions: isUnlocked ? paper.questions : null,
+          fileData: isUnlocked ? paper.fileData : null,
+          fileName: isUnlocked ? paper.fileName : null,
+          fileType: isUnlocked ? paper.fileType : null,
         };
       });
 
